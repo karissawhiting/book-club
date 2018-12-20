@@ -3,8 +3,10 @@
 1. 6 types of atomic vector: logical, integer, numeric (double), character, complex, and raw
 List differs from atomic vector in that it is recursive (can contain other lists).
 
-2. is.vector() and is.numeric() test specific things: is.vector() returns TRUE if x is a vector of the specified mode having no attributes
-other than names. is.numeric() returns TRUE for both numeric and integer. Different to is.list() and is.character() which return TRUE
+2. is.vector() and is.numeric() test specific things: is.vector() returns TRUE if 
+x is a vector of the specified mode having no attributes
+other than names. is.numeric() returns TRUE for both numeric and integer. 
+Different to is.list() and is.character() which return TRUE
 only if the objects tested are list or character respectively. 
 
 3. Vector coercion rules: least to most flexible: Logical, integer, double, character
@@ -58,5 +60,14 @@ x3 <- array(1:5, c(5, 1, 1))
 These three are 3d arrays with varying dimensions, 
 which makes them different from 1:5. 
 
+2.4.5 Data frames
+1. Attributes of a data frame: names(), rownames(), class(), and any custom ones
+2. as.matrix() will coerce different types of data into the least flexible type (e.g. it will make a character matrix)
+Since a matrix is only of one type of data but a df can be many types. 
+3. You can have a data frame with 0 rows and zero columns 
+x4 <- data.frame(x = NULL)
+# > data frame with 0 columns and 0 rows
 
-S3 object: lest with class attribute set to a class name
+Notes:
+S3 object: list with class attribute set to a class name
+I() treat an object "as is" (e.g. protecting lists or matrices which are to be added to a data fram)
