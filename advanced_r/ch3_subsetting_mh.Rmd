@@ -1,7 +1,7 @@
 ---
 title: "Chapter 3 Notes"
 author: "M Hannum"
-date: "Sys.Date()"
+date: "`r Sys.Date()`"
 output: 
   github_document:
     toc: true
@@ -96,3 +96,25 @@ names(df3)
 
 ```
 
+
+# Exercises
+
+##3.1.7
+1. Fix the following common data frame subsetting errors
+```{r}
+#original
+mtcars[mtcars$cyl = 4, ]
+mtcars[-1:4, ]
+mtcars[mtcars$cyl <= 5]
+mtcars[mtcars$cyl == 4 | 6, ]
+
+#fixed
+mtcars[(mtcars$cyl = 4), ]
+mtcars[-c(1:4), ]
+mtcars[c(mtcars$cyl <= 5),]
+mtcars[mtcars$cyl == 4 | mtcars$cyl == 6, ]
+```
+
+
+# Notes
+On a dataframe, "matrix subsetting simplifies by default, list subsetting does not." `["a"]` vs `[, "a"]`
