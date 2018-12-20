@@ -1,0 +1,20 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  out.width = "100%"
+)
+```
+
+
+# book-club
+
+A collection of notes from going through different statistical and programming texts. 
+
+First on the docket is [**Advanced R**](http://adv-r.had.co.nz/) by Hadley Wickham. 
