@@ -1,7 +1,7 @@
 ---
 title: "Chapter 2 Notes"
 author: "M Hannum"
-date: "Sys.date()"
+date: "`r Sys.Date()`"
 output: 
   github_document:
     toc: true

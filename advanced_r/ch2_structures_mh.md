@@ -1,7 +1,7 @@
 Chapter 2 Notes
 ================
 M Hannum
-Sys.date()
+2018-12-20
 
 -   [Chapter 2: Structures Exercises](#chapter-2-structures-exercises)
     -   [2.1.3](#section)
