@@ -1,0 +1,31 @@
+Chapter 5 Notes
+================
+M Hannum
+2018-12-31
+
+-   [Chapter 5: Style Guide](#chapter-5-style-guide)
+    -   [Notes](#notes)
+
+Chapter 5: Style Guide
+======================
+
+Notes
+-----
+
+### On the actual chapter
+
+S3 vs S4: From my understanding, anything can be S3 class if it has certain attributes. Very flexible. We can create our own S3 class objects within packages, functions, or just in our own programming.
+
+S4 class has more clarity but is more rigid.
+
+According to [Google's R Style Guide](https://google.github.io/styleguide/Rguide.xml), "Use S3 objects and methods unless there is a strong reason to use S4 objects or methods. A primary justification for an S4 object would be to use objects directly in C++ code."
+
+Discussion: thoughts on numbering filenames? e.g. 0-data\_preparation.R, 1-table1\_exploratory.R, 2-analysis\_regression.R
+
+### Beyond the chapter
+
+Beyond the Advanced R style chapter and Google's R Style guide, the [tidyverse style guide](https://style.tidyverse.org/index.html) is also quite good. It recommends using the [stylr](http://styler.r-lib.org/) package to "restyle text, files, or entire projects."
+
+*tidyverse style guide discourages using code font for package names in documentation* (which I have been doing up to this point) (see section 5.7 Documentation: R code)
+
+I want to get better about using TODOs in code

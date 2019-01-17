@@ -1,0 +1,100 @@
+---
+title: "Chapter 6 Notes"
+author: "M Hannum"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(pryr)
+```
+
+# [Chapter 6: Functions](http://adv-r.had.co.nz/Functions.html)
+
+**Opening quiz**  
+
+1. 3 components of a function: body, arguments, environment  
+2. 11 (comment: generally should functions within functions take input from the surrounding function? Haven't used the double ()() before)  
+
+
+```{r}
+x <- 10
+f1 <- function(x) {
+  function() {
+    x + 10
+  }
+}
+f1(1)()
+
+```
+
+3. `1 + (2 * 3)`  
+
+4. 
+
+```{r}
+
+mean(c(1:10, NA), na.rm = TRUE)
+```
+
+5. `b` argument is never used in function so it does not stop or produce error message. 
+
+```{r}
+f2 <- function(a, b) {
+  a * 10
+}
+f2(10, stop("This is an error!"))
+```
+
+6. infix function is binary operator function
+
+## Function components
+
+**6.1.2 Exercises**  
+1. Can use `class()` to tell if an object is a function. Can also use `is.function()` and `is.primitive()` for a logical test on if object is a function or primitive function.  
+
+2.  
+a. The `scan()` function has the most arguments (22)  
+
+```{r}
+# make list of all functions in base package
+objs <- mget(ls("package:base"), inherits = TRUE)
+funs <- Filter(is.function, objs)
+
+# find which base function has most arguments
+
+# create a named vector of lengths
+arg_length <- purrr::map_int(funs, function(x)(length(formals(x))))
+
+#Get name of function with most arguments
+max(arg_length)
+names(which(arg_length == max(arg_length)))
+
+```
+
+b. 
+```{r}
+no_args <- names(which(arg_length == 0))
+head(no_args)
+length(no_args)
+
+
+prims <- Filter(is.primitive, objs)
+length(prims)
+
+arg_length_prims <- purrr::map_int(prims, function(x)(length(formals(x))))
+
+non_prim_no_args <- no_args[!(no_args %in% names(prims))]
+
+non_prim_no_args
+```
+
+
+
+3. 
+

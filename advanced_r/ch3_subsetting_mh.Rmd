@@ -113,6 +113,8 @@ mtcars[(mtcars$cyl = 4), ]
 mtcars[-c(1:4), ]
 mtcars[c(mtcars$cyl <= 5),]
 mtcars[mtcars$cyl == 4 | mtcars$cyl == 6, ]
+
+str(mtcars[,"cyl"])
 ```
 
 
