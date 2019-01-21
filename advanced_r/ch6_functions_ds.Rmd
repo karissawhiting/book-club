@@ -1,0 +1,70 @@
+---
+title: "Chapter 6 Notes"
+author: "Daniel Sjoberg"
+date: "January 21, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Quiz
+
+#### 1. What are the three components of a function?
+
+Hmmm, call, body, inputs.
+
+*Correct answer: body, arguments, and environment.*
+
+#### 2. What does the following code return?
+
+```{r remedy001, eval = F}
+x <- 10
+f1 <- function(x) {
+  function() {
+    x + 10
+  }
+}
+f1(1)()
+```
+
+`f1(1)() = 11`
+
+#### 3. How would you more typically write this code?
+
+```{r remedy002, eval = F}
+`+`(1, `*`(2, 3))
+```
+
+`1 + 2 * 3`
+
+#### 4. How could you make this call easier to read?
+
+```{r remedy003, eval = F}
+mean(, TRUE, x = c(1:10, NA))
+```
+
+```{r remedy004, eval = F}
+mean(c(1:10, NA), na.rm = TRUE)
+```
+
+#### 5. Does the following function throw an error when called? Why/why not?
+
+```{r remedy005, eval = F}
+f2 <- function(a, b) {
+  a * 10
+}
+f2(10, stop("This is an error!"))
+```
+
+No, because `b` is never evaluated.
+
+#### 6. What is an infix function? How do you write it? What’s a replacement function? How do you write it?
+
+The R functions where the inputs are on each side of the operator, e.g. LHS %...% RHS.
+
+#### 7. What function do you use to ensure that a cleanup action occurs regardless of how a function terminates?
+
+IDK  
+*Correct Answer: You use `on.exit()`* 
