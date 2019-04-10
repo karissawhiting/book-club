@@ -1,0 +1,293 @@
+Chapter 8 Notes
+================
+M Hannum
+2019-03-29
+
+-   [[Chapter 8: Environments](http://adv-r.had.co.nz/Environments.html)](#chapter-8-environments)
+    -   [8.1 Environment basics](#environment-basics)
+    -   [8.2 Recursing over environments](#recursing-over-environments)
+    -   [8.3 Function Environments](#function-environments)
+    -   [Binding names to values](#binding-names-to-values)
+
+[Chapter 8: Environments](http://adv-r.had.co.nz/Environments.html)
+===================================================================
+
+**Opening quiz**
+
+1.  Ways environment is different to a list:
+
+-   elements in list don't need to be named, names in environments must be unique
+-   order doesn't matter in environment
+-   environments have parents (except the empty environment, i.e. the most ancient ancestor) (note the empty environment is the parent of the base environment)
+
+1.  Parent of the global environment is the last package you loaded
+
+2.  Enclosing environment: where the function was created (and where it looks for variables)
+
+3.  How to determine environment from which a function was called? `parent.frame` "The parent frame of a function evaluation is the environment in which the function was called. It is not necessarily numbered one less than the frame number of the current evaluation, nor is it the environment within which the function was defined. sys.parent returns the number of the parent frame if n is 1 (the default), the grandparent if n is 2, and so on. See also the ‘Note’."
+
+4.  &lt;- binds in current environment, &lt;&lt;- binds in parent of current environment
+
+8.1 Environment basics
+----------------------
+
+Place where names and values match up! Environment contains the names IN that environment.
+
+Parent environments important for *lexical scoping*, i.e. if the name isn't in an environment, R will look up at the parent.
+
+This is why order of package loads can matter (masking!)
+
+``` r
+e <- new.env()
+
+parent.env(e)
+```
+
+    ## <environment: R_GlobalEnv>
+
+``` r
+ls(e)
+```
+
+    ## character(0)
+
+``` r
+e$a <- 1
+e$b <- 2
+ls(e)
+```
+
+    ## [1] "a" "b"
+
+``` r
+# shows each object in environment so may be more useful than str() at times
+ls.str(e)
+```
+
+    ## a :  num 1
+    ## b :  num 2
+
+Can't remove things by setting them to NULL (like you can with a list). Have to use `rm()`.
+
+``` r
+e$a
+```
+
+    ## [1] 1
+
+``` r
+e$a <- NULL
+ls(e)
+```
+
+    ## [1] "a" "b"
+
+``` r
+e$a
+```
+
+    ## NULL
+
+``` r
+rm("a", envir = e)
+
+ls(e)
+```
+
+    ## [1] "b"
+
+### Exercises
+
+1.  In environment: can't remove items by setting them to NULL, elements need a name, order doesn't matter.
+
+2.  If you don't supply an explicit environment, ls() and rm() look in the globalenv(). Use parameter `envir =` to specify where to start to look. Lexical scoping will hapen unless you set `inherits = FALSE`.
+
+3.  Got answer from Jenny Bryan:
+
+It is a recursive function because it uses it's own function inside! Goes up and up the family tree until it reaches `emptyenv()`, at which point it stops
+
+``` r
+j_search <- function(env = globalenv()) {
+  if (identical(env, emptyenv())) {
+    return(invisible(NULL))
+    } else {
+      return(c(environmentName(env), j_search(parent.env(env))))
+      }
+  }
+j_search()
+```
+
+    ##  [1] "R_GlobalEnv"       "package:pryr"      "package:stats"    
+    ##  [4] "package:graphics"  "package:grDevices" "package:utils"    
+    ##  [7] "package:datasets"  "package:methods"   "Autoloads"        
+    ## [10] "base"
+
+``` r
+j_search(e)
+```
+
+    ##  [1] ""                  "R_GlobalEnv"       "package:pryr"     
+    ##  [4] "package:stats"     "package:graphics"  "package:grDevices"
+    ##  [7] "package:utils"     "package:datasets"  "package:methods"  
+    ## [10] "Autoloads"         "base"
+
+``` r
+# environmentName returns character string
+# parent.env returns the enclosing environment of it's first argument
+```
+
+8.2 Recursing over environments
+-------------------------------
+
+``` r
+where("e")
+```
+
+    ## <environment: R_GlobalEnv>
+
+``` r
+where("mean")
+```
+
+    ## <environment: base>
+
+### Exercises
+
+1.  Modify `where()` to find all envrionments taht contain a binding for `name`.
+
+p.s. blog article which answers the question [What on earth is binding?](https://colinfay.me/ractivebinfing/)
+
+``` r
+where_m <- function(name, env = parent.frame()) {
+  if (identical(env, emptyenv())) {
+    # Base case
+    return(invisible(NULL))
+    
+  } else if (exists(name, envir = env, inherits = FALSE)) {
+    # Success case
+    return(c(environmentName(env), where_m(name, parent.env(env))))
+    
+  } else {
+    # Recursive case
+    where_m(name, parent.env(env))
+    
+  }
+}
+
+median <- "test"
+where_m("median")
+```
+
+    ## [1] "R_GlobalEnv"   "package:stats"
+
+``` r
+rm("median")
+where_m("median")
+```
+
+    ## [1] "package:stats"
+
+1.  Version of `get()`
+
+8.3 Function Environments
+-------------------------
+
+enclosing, binding, execution, and calling
+
+*Think of it as casting a spell*
+
+### Enclosing
+
+i.e. environment where function was created.
+
+``` r
+environment(where)
+```
+
+    ## <environment: namespace:pryr>
+
+``` r
+environment(where_m)
+```
+
+    ## <environment: R_GlobalEnv>
+
+*Distinction between the binding environment and the enclosing environment is important for package namespaces*
+
+Every package has both package and namespace envrionments. Internal functions that aren't exported as part of the package environment are kept in the namespace environment. Package environment is the public face.
+
+### Execution
+
+The below returns the same thing twice because of "Fresh Start Principle"
+
+``` r
+g <- function(x) {
+  if (!exists("a", inherits = FALSE)) {
+    message("Defining a")
+    a <- 1
+  } else {
+    a <- a + 1
+  }
+  a
+}
+g(10)
+```
+
+    ## Defining a
+
+    ## [1] 1
+
+``` r
+g(10)
+```
+
+    ## Defining a
+
+    ## [1] 1
+
+### Calling
+
+``` r
+h <- function() {
+  x <- 10
+  function() {
+    x
+  }
+}
+i <- h()
+x <- 20
+i()
+```
+
+    ## [1] 10
+
+### Exercises
+
+1.  Four environments associated with a function:
+
+-   Enclosing: where function was created
+-   Binding: where function named
+-   Execution: ephemeral environment that stores variables created while executing a function
+-   Calling: Where the function is called
+
+1.  Draw diagram of:
+
+``` r
+f1 <- function(x1) {
+  f2 <- function(x2) {
+    f3 <- function(x3) {
+      x1 + x2 + x3
+    }
+    f3(3)
+  }
+  f2(2)
+}
+f1(1)
+```
+
+    ## [1] 6
+
+Binding names to values
+-----------------------
+
+Assignment: bind name in an environment Scoping: look for value associated with name in environment Lexical scoping: scope in environment recursively up parent environments until you find value associated with name

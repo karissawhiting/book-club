@@ -1,0 +1,412 @@
+---
+title: "Chapter 7 Notes"
+author: "Esther Drill"
+date: "March 8, 2019"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(pryr)
+library(stats4)
+```
+
+# Intro
+
+Not particularly comprehensible, moving on to the rest of the chapter, which
+I hope will prove easier to fathom.
+
+
+# Quiz
+
+#### How do you tell what OO system (base, S3, S4, or RC) an object is associated with?
+
+No idea. But hopeful I will know by the end of the chapter
+
+*Correct answer: process of elimination. Not convinced this is the best way...*
+
+#### 2. How do you determine the base type (like integer or list) of an object?
+
+My idea:  
+is.integer(x)  
+is.list(x)
+
+WRONG!
+
+*Correct answer:* **typeof(x)* ***
+
+
+#### 3. What is a generic function?
+
+I think I know but not sure how to describe it.
+
+*Correct answer: A generic function calls specific methods depending on the class of its inputs. In S3 and S4 object systems, methods belong to generic functions,not classes like in other programming languages.*
+
+This clearly seems most useful for people with background in programming...
+
+
+#### 4. What are the main differences between S3 and S4? What are the main differences between S4 & RC?
+
+Well, S4 is more formal than S3, and also has multiple dispatch, but don't really
+know what that means.
+
+Don't understand RC at all.
+
+*Correct answer: S4 is more formal than S3, and supports multiple inheritance and multiple dispatch. RC objects have reference semantics, and methods belong to classes, not functions.*
+
+# 7.1: Base types
+
+* Underlying every R ojbect is a C struct, which includes a **type**.
+* Most common base types: **atomic vectors** and **lists**.
+* Also: **functions** and **environments**, as well as **names**, **calls**, and **promsises**.
+* Determine an object's base type with **typeof()**.
+* Names of base types are inconsistent throughout R and don't always match up with "is" functions.
+
+```{r base_types_1, eval = T}
+# The type of a function is "closure"
+# I always wondered what closure  meant in R.
+f <- function() {}
+typeof(f)
+is.function(f)
+```
+
+```{r base_types_2, eval = T}
+# The type of a primitive function is "builtin"
+typeof(sum)
+is.function(sum)
+```
+
+* S3 objects can be built on top of any base type
+* S4 objects use a special base type
+* RC objects are a combo of S4 and enviornments (another base type)
+* To see if an object is a pure base type, check that **is.object(x)** returns FALSE
+
+# 7.2: S3
+
+* Only OO system used in base R
+* Most commonly used system in CRAN packages
+
+## 7.2.1: Recognizing objects, generic functions, and methods
+
+* No simple way to test if an object is an S3 object in base R.
+* Closest you can come is **is.object(x)** & **!isS4(x)**
+* But you can use **pryr::otype()** like so:
+
+```{r S3_1, eval = T}
+library(pryr)
+df <- data.frame(x = 1:10, y = letters[1:10])
+head(df)
+otype(df)   # A data frame is an s3 class
+otype(df$x) # A numeric vector isn't
+otype(df$y) # A factor is
+```
+
+* In S3 methods belong to functions, called **generic functions**
+* S3 methods do not belong to objects or classes. (Different from most other programming languages.)
+* To determine if a function is an S3 generic, inspect source code for a call to **UseMethod()**.
+* **UseMethod()** is the function that figures out the correct method to call: **method dispatch**
+* **pryr::ftype()** describes object systems associated with function
+
+```{r S3_2, eval = T}
+mean
+ftype(mean)
+```
+
+* S3 generics implemented in C don't call **UseMethod()**. 
+
+```{r S3_3, eval = T}
+sum
+ftype(sum)
+```
+
+* Job of an S3 generic is to call the right S3 method.
+* S3 methods' names look like **generic.class()**
+* This can be confusing when function names use **.**. This is why style guides suggest to use **_** in function names instead.
+
+```{r S3_4, eval = T}
+ftype(t.data.frame) # data frame method for t()
+ftype(t.test)       # generic function for t tests
+```
+
+* You can see all methods that belong to a generic with **methods()**
+* S3 methods not defined in base package will not be visible. Can use **getS3method()** to read source code.
+*Would like to see an example of this.*
+* No way to list all S3 classes.
+
+## 7.2.2: Defining classes and creating objects
+
+* S3 simple and ad hoc system.
+* To make an object an instance of a class, take an existing base object and set the class attribute.
+* S3 objects usually built on top of lists, or atomic vectors with attributes.
+
+```{r S3_classes_1, eval = T}
+# Create and assign class in one step
+foo <- structure(list(), class = "foo")
+# Create, then set class
+foo <- list()
+class(foo) <- "foo"
+```
+
+* Determine class of any object, and see if object inherits from a specific class:
+
+```{r S3_classes_2, eval = T}
+class(foo)
+inherits(foo, "foo")
+```
+
+* Class of an object can be a vector, with behavior from most to least specific.
+* Class of **glm()** object is **c("glm","lm")** meaning that generalized linear models inherit behavior from linear models.
+* Most S3 classes provide a constructor function:
+```{r S3_classes_3, eval = F}
+foo <- function(x) {
+  if (!is.numeric(x)) stop("X must be numeric")
+  structure(list(x), class = "foo")
+```
+* S3 has no checks for correctness.
+## 7.2.3: Creating new methods and generics
+* To add a new generic:
+```{r S3_methods_1, eval = T}
+f<- function(x) UseMethod("f")
+f.a <- function(x) "Class a"
+a <- structure(list(), class = "a")
+class(a)
+f(a)
+mean.a <- function(x) "a"
+mean(a)
+```
+* No check to make sure that the method returns the class compatible with the generic.
+## 7.2.4: Method dispatch
+* **UseMethod()** creates a vector of function names, and looks for each in turn:
+```{r S3_methods_2, eval = T}
+f<- function(x) UseMethod("f")
+f.a <- function(x) "Class a"
+f.default <- function(x) "Unknown class"
+f(structure(list(), class = "a"))
+# No method for b class, so uses method for a class
+f(structure(list(), class = c("b","a")))
+# No method for c class, so falls back to default
+f(structure(list(), class = "c"))
+```
+## Exercises
+#### 1. Read the source code for t() and t.test() and confirm that t.test() is an S3 generic and not an S3 method. What happens if you create an object with class test and call t() with it?
+```{r, ex_1 = T, error=TRUE}
+t
+ftype(t)
+t.test
+ftype(t.test)
+test <- structure(list(), class = "test")
+t(test) 
+```
+#### 2. What classes have a method for the **Math** group generic in base R? Read the source code. How do the methods work?
+From **?groupGeneric** details, we see the following classes have a method for the **Math** group:  
+* factor
+* data.frame
+* difftime
+* Date
+```{r, ex_2 = T}
+Math.factor
+Math.data.frame
+```
+#### 3. R has two classes for representing date time data, **POSIXct** and **POSIXlt**, which both inherit from **POSIXt**. Which generics have different behaviours for the two classes? Which generics share the same behaviour?
+```{r, ex_3 = T}
+methods(class = "POSIXct")
+methods(class = "POSIXlt")
+methods(class = "POSIXt")
+```
+So I think the idea is that the methods listed for **POSIXt** are shared by **POSIXct** and **POSIXlt**, but the methods listed for **POSIXct** and **POSIXlt** only have different behaviors for the two classes. 
+#### 4. Which base generic has the greatest number of defined methods?
+```{r, ex_4 = T}
+## From Chapter 6
+objs <- mget(ls("package:base"), inherits = TRUE)
+funs <- Filter(is.function, objs)
+funs_names <- names(funs)
+funs_names[100:120]
+generic_names <- str_split_fixed(funs_names, fixed("."), 2)
+generic_names[100:120,]
+funs_numbers <- sort(table(generic_names[,1]),decreasing = TRUE)
+head(funs_numbers)
+ftype(as)
+head(funs_names[grep("as.",funs_names, fixed=TRUE)],20)
+```
+#### 5. Run the code to figure out what is going on:
+```{r, ex_5 = T}
+y <- 1
+g <- function(x) {
+  y <- 2
+  UseMethod("g")
+}
+g.numeric <- function(x) y
+g(10)
+h <- function(x) {
+  x <- 10
+  UseMethod("h")
+}
+h.character <- function(x) paste("char", x)
+h.numeric <- function(x) paste("num", x)
+h("a")
+```
+#### 6. Internal generics don't dispatch on the implicit class of base types. Carefully read ?"internal generic" to determine why the length of **f** and **g** is different in the example below. What function helps distinguish between the behaviour of **f** and **g**?
+```{r, ex_6 = T}
+f <- function() 1
+g <- function() 2
+class(g) <- "function"
+class(f)
+class(g)
+length.function <- function(x) "function"
+length(f)
+length(g)
+```
+# 7.3: S4
+* Like S3, but with formality and rigor
+* Classes have formal definitions which describe their fields and inheritance structures (parent classes)
+* Method dispatch can be based on multiple arguments, not just one
+* Special operator, @, for extracting slots (aka fileds) from S4 object
+* No S4 classes in commonly used base packages
+* Examples of packages that make good use of S4 objects are not so easy to find
+  - lme4
+  - iRanges
+  - ExpressionSet class (for differential gene analysis)
+  - stats4 package provides some S4 classes and methods associated with mle
+## 7.3.1: Recognizing objects, generic functions, and methods
+* How to create 
+```{r S4_objects, eval = T}
+library(stats4)
+y <- c(26, 17, 13, 12, 20, 5, 9, 8, 5, 4, 8)
+nLL <- function(lambda) - sum(dpois(y, lambda, log=TRUE))
+fit <- mle(nLL, start = list(lambda = 5), nobs = length(y))
+str(fit)
+isS4(fit)
+otype(fit)
+str(nobs)
+isS4(nobs)
+ftype(nobs)
+# Retrieve an S4 method
+mle_nobs <- method_from_call(nobs(fit))
+str(mle_nobs)
+isS4(mle_nobs)
+ftype(nobs)
+# List all classes that an object inherits from
+is(fit)
+```
+There are various ways  to get lists of all S4 generics (pp 112-113)
+* **getGenerics()** lists all S4 generics
+* **getClasses()** lists all S4 classes (in currently used packages)
+  - This list includes shim classes for S3 classes and base types
+  - From Wikipedia: In computer programming, a **shim** is a library that transparently intercepts API calls and changes the arguments passed, handles the operation itself or redirects the operation elsewhere
+* **showMethods()** lists all S4 methods, and can restrict selection by **generic** or **class** or both
+```{r S4_objects_2, eval = T, error = T}
+getClasses(where = "package:methods")
+getClasses(where = "package:stats4")
+```
+## 7.3.2: Defining classes and creating objects
+* As opposed to S3, where you can turn any object into an object of a particular class by setting class attribute,
+S4 is much stricter.
+* S4 class has 3 properties:
+  - A name in UpperCamelCase
+  - A names list of **slots**, which defines slot names and permitted classes.
+  - A string giving the class it inherits from (or in S4-speak, **contains**)
+  - See **?setClass** for more details on optional properties and the special class **ANY*** 
+* This code creates a Person class with fields name and age, and an Employee class that inherits from Person.
+```{r S4_class_1, eval = T}
+setClass("Person",
+         slots = list(name = "character", age = "numeric"))
+setClass("Employee",
+         slots = list(boss = "Person"),
+         contains = "Person")
+alice <- new("Person", name = "Alice", age = 40)
+john <- new("Employee", name = "John", age = 20, boss = alice)
+```
+If the S4 vlass comes with a constructor function with the same name as the class, use that instead of calling **new()** directly.
+```{r S4_class_2, eval = T}
+str(john)
+## To access slots:
+alice@age
+slot(john, "boss")
+```
+If an S4 object contains (inherits from) an S3 class or a base type, it will have a special **.Data** slot which contains the underlying object, like so:
+```{r S4_class_3, eval = T}
+setClass("RangedNumeric",
+         contains = "numeric",
+         slots = list(min = "numeric", max = "numeric"))
+rn <- new("RangedNumeric", 1:10, min = 1, max = 10)
+rn@min
+rn@.Data
+```
+If you modify a class, make sure you also recreate any objects of that class. Otherwise, objects will be invalid.
+## 7.3.3: Creating new methods and generics
+* **setGeneric()** creates a new generic or convers an existing function into a generic
+* **setMethod()** takes the name of the generic, the classes the method should be associated with, and a function that implements the method.
+```{r S4_method_1, eval = T}
+setGeneric("union")
+setMethod("union",
+          c(x = "data.frame", y = "data.frame"),
+          function(x, y) {
+          unique(rbind(x, y))
+          })
+```
+To create a new generic from scratch, supply a function that calls **standardGeneric()**, which is the S4 equivalent to **UseMethod()**
+```{r S4_method_2, eval = T}
+setGeneric("myGeneric", function(x) {
+  standardGeneric("myGeneric")
+})
+```
+
+## 7.3.4: Method dispatch
+
+* If S4 generic dispatches on a single class with a single parent, then S4 method dispatch is the same as S3 dispatch.
+  - S4 uses special class **ANY** to match any class
+  - S4 uses "missing" to match a missing argument.
+* Method dispatch becomes more complicated in you dispatch on multiple arguments, or if your classes use multiple inheritance.
+
+To find out which method gets called give the specification of a generic call:
+
+```{r S4_method_3, eval = T}
+selectMethod("nobs", list("mle"))
+method_from_call(nobs(fit))
+```
+
+## Exercises
+
+#### 1. Which S4 generic has the most methods defined for it? Which S4 class has the mosst methods associated with it?
+
+
+```{r, S4_ex_1 = T, error=TRUE}
+getGenerics(where = "package:methods")
+genericsS4 <- getGenerics(where = search())
+str(genericsS4)
+genericsS4_names <- genericsS4@.Data
+### find methods defined for every S4 generic
+generic_methods <- lapply(genericsS4_names, function(x) {methods(x)})
+### get # of methods defined for every S4 generic
+length_gmethods <- unlist(lapply(generic_methods, length))
+### find the generic with the max length
+generic_most_methods <- generic_methods[which.max(length_gmethods)]
+ftype(summary)
+```
+
+Theoretically, to find the S4 class with the most associated methods, you would have to take the inherited classes into account and see how many methods were associated with the inherited classes as well. 
+
+#### 2. What happens if you define a new S4 class that doesn't "contain" an existing class? (Hint: read about virtual classes in **?classes**.)
+
+I read about virtual classes in **?Classes** and it says,  
+"...if the class does not inherit from a type, objects form the class will have type "S4"."
+
+#### 3. What happens if you pass an S4 object to an S3 generic? What happens if you pass an S3 object to an S4 generic? (Hint: read **?setOldClass** for the second case.)
+
+```{r, S4_ex_3 = T, error=TRUE}
+otype(alice)
+mean(alice)
+data.frame(alice)
+```
+
+# RC
+
+* Newest OO system in R
+* RC methods belong to objects, not functions
+* RC objects are changeable
+* RC objects behave more like objects do in most other programming languages
+* Special S4 class that wraps around an environment.

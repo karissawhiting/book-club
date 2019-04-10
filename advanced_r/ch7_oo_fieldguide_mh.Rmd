@@ -1,0 +1,90 @@
+---
+title: "Chapter 7 Notes"
+author: "M Hannum"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(pryr)
+```
+
+# [Chapter 7: OO field guide](http://adv-r.had.co.nz/OO-essentials.html)
+
+**Opening quiz**  
+
+1. 
+```{r}
+x <- 1
+
+!is.object(x)
+!isS4(x)
+!is(x, "refClass")
+
+y <- data.frame(a = 1, b = 2)
+
+!is.object(y)
+!isS4(y)
+!is(y, "refClass")
+```
+
+2. 
+```{r}
+
+typeof(x)
+
+typeof(y)
+```
+
+
+# S3 sections
+
+# S4
+
+Didn't know about the special operator "@" for S4!
+
+Also didn't know about including explicit `library(methods)` when using S4.
+
+```{r}
+library(stats4)
+# From example(mle)
+y <- c(26, 17, 13, 12, 20, 5, 9, 8, 5, 4, 8)
+nLL <- function(lambda) - sum(dpois(y, lambda, log = TRUE))
+fit <- mle(nLL, start = list(lambda = 5), nobs = length(y))
+
+# An S4 object
+isS4(fit)
+
+otype(fit)
+
+getGenerics()
+
+```
+
+## Case Studies
+From [S4 In Bioconductor](http://www.bioconductor.org/help/course-materials/2010/AdvancedR/S4InBioconductor.pdf) presentation. 
+
+```{r}
+library(Biobase)
+
+isVirtualClass("eSet")
+isVirtualClass("ExpressionSet")
+
+getSlots("ExpressionSet")
+
+library(limma)
+getSlots("MAList")
+
+library(IRanges)
+is(new("CompressedIRangesList"))
+
+getSlots("RangesList")
+
+```
+
+
