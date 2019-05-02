@@ -1,0 +1,319 @@
+---
+title: 'Chapter 9: Debugging Notes'
+author: "Karissa Whiting"
+date: "5/1/2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(purrr)
+library(tidyverse)
+
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Quiz
+
+1) How can you tell where an error occurred?
+    - use traceback()
+2) What does browser() do? List 5 usefil single-key commands you can use in browser() environment.
+    - browser allows you to enter interactive programming enviroment so you can explore potentially layered function issues. Useful commands are: 
+        - n (execute next command), 
+        - s (step into next function), 
+        - f (finish current loop or function), 
+        - c (continue execution normally), 
+        - Q stop and return to console
+    
+3) What functions do you use to ignore errors in blocks of code?
+  - try() and tryCatch()
+  
+4) Why might you want to create an error with a custom S3 class?
+  - You can then use tryCatch() to capture specific types of errors
+
+## General Notes
+
+- "Fail fast" method - spend more time writing code to catch errors, but save time in the long 
+    - check inputs are correct
+    - avoid non standard eval
+    - avoid functions that can return different types of outputs 
+    
+- You shouldn't need debugging when writing new functions. if you do you may want to make smaller functions and work interactively on small pieces
+
+- Unexpected Errors (Debugging tools) versus Expected Errors (Conditional Handling)
+
+- Tension between interactive analysis and strict programming (be strict if writing for programming) 
+- 
+https://htmlpreview.github.io/?https://github.com/berkeley-scf/tutorial-R-debugging/blob/master/R-debugging.html
+
+- `print()` and `cat()` are not easily supressed and you can't use conditional handling 
+
+- *Note: Check your RStudio debug options !!! (Debug -> on Error-> Error Inspector)*
+
+- *Note: I think naming functions and args explicitely can help with debugging!*
+
+
+*Conditions*
+
+Help anticipate potential problems in functions with conditions:
+- `stop()` - forces termination
+- `warning()` - throws message about potential problem
+- `message()` - give information, but are easily supressed.e.g. notifying user what value the function has chosen for an important missing argument 
+
+
+## 9.1 Debugging Techniques
+
+1) Realise you have a bug (new version says Google it as first step) - automated test suites are useful 
+2) Make it repeatable - binary search through code (although not sure if this is really necessary for everyday code?). Make notes of inputs you try that may or may not be triggering it.
+3) Find lines of code that are buggin' and adopt a systematic approach 
+4) Fix and test 
+
+## 9.2 Debugging Tools 
+
+- Call Stack- `traceback()` shows where the error may have occured. Read from bottom to top. 
+- Browsing an Error - `browser()` puts you in interactive state inside function
+    - `recover()` like `browser()` but can enter any function in the stack 
+    
+- Breakpoints - Can open browser even when you're not bugging. Can't do them in .Rmd?
+
+- You can turn messages to error if you want to try to eliminate mysterious messages in your functions (see custom function in book for this). 
+
+```{r}
+f <- function(a) g(a)
+g <- function(b) h(b)
+h <- function(c) i(c)
+i <- function(d) "a" + d
+f(10)
+```
+
+```{r}
+# Another test function example
+
+# 1 ---------------
+top_level <- function(number_arg_1) second_level(number_arg_1)
+
+# 2 -----
+second_level <- function(number_arg_2) third_level(number_arg_2)
+
+# 3 -----
+third_level <- function(number_arg_3) {
+  log_number_arg_3 <- log(number_arg_3)
+  
+  if (log_number_arg_3 > 1) {
+    result <- log_number_arg_3
+    
+  } else {
+    result <- as.character(log_number_arg_3)
+  }
+  
+  inner_level(result) 
+}
+
+#4  ------
+inner_level <- function(number_or_string) number_or_string + 1
+
+
+# Run it  ------------------------------------------------------------
+top_level(10) # works fine because log(10) > 1
+top_level(2) # log(2) is < 1, error should occur in inner level funcion which is passed a str
+top_level("a") # error should occur in third level b/c log("a")
+
+# recover()
+```
+
+
+## 9.3 Conditional Handling
+
+Use conditional handling when you expect errors will occur but you don't want to stop your function. Instead of stopping you want to let it run and diagnose the errors later.
+
+- `try()` allows execution to continue after an error has occured 
+    - useful when you are appling function to multiple elements of a list (which can be different types). 
+    - error message will be printed, but execution will continue
+    
+```{r}
+f1 <- function(x) {
+  log(x)
+  10
+}
+
+f1("x")
+
+f1 <- function(x) { # also can use silent option 
+  try(log(x))
+  10
+}
+
+f1("x")
+
+failure <- try(f1("x"))
+success <- f1(3)
+```
+
+- `tryCatch()` can take different actions with errors, warnings and messages.
+    - conditionMessage() captures original message!
+
+
+```{r}
+show_condition <- function(code) {
+  tryCatch(code, 
+           error = function(c) conditionMessage(c),
+           warning = function(c) "warning",
+           message = function(c) conditionMessage(c))
+}
+
+show_condition(stop("!"))
+show_condition(warning("?"))
+
+```
+
+```{r}
+read.csv2 <- function(file, ...) {
+  tryCatch(read.csv(files, ...), error = function(c) {
+    c$message <- paste0(c$message, " (in" , file, ")")
+    stop(c)
+  })
+}
+
+read.csv("code/dummy.csv")
+read.csv2("code/dummy.csv")
+```
+
+```{r}
+
+# use conditionMessage() instead of c$message 
+
+read.csv2 <- function(file, ...) {
+  tryCatch(read.csv(files, ...), error = function(c) {
+    c$message <- paste0(conditionMessage(c), " (in" , file, ")")
+    stop(c)
+  })
+}
+
+read.csv("code/dummy.csv")
+read.csv2("code/dummy.csv")
+```
+
+```{r}
+
+# interupts 
+i <- 1
+while(i < 3) {
+  tryCatch({
+    Sys.sleep(.5)
+    message("Try to escape")
+  }, interrupt = function(x) {
+    message("Try Again!")
+    i <<- i + 1
+  })
+}
+```
+
+- `withCallingHandlers()` - alternative to tryCatch(). 
+    - `withCallingHandlers()` is a variant of tryCatch() that establishes local handlers, whereas tryCatch() registers exiting handlers. Local handlers are called in the same context as where the condition is signalled, without interrupting the execution of the function. When a exiting handler from tryCatch() is called, the execution of the function is interrupted and the handler is called. withCallingHandlers() is rarely needed, but is useful to be aware of.
+ 
+### 9.3.5 Exercises
+
+```{r}
+message2error <- function(code) {
+  withCallingHandlers(code, message = function(e) stop(e))
+}
+
+message2error(message("test"))
+```
+
+````{r}
+message2error2 <- function(code) {
+  tryCatch(code, message = function(e) stop(e))
+}
+message2error2(message("test"))
+```
+
+## 9.4 Defensive Programming 
+
+- Be strict and check inputs (stopifnot())
+- Avoid non-standard evaluation (evaluates expressions in specified enviroments, e.g `with()`)
+- Standardize the type of output. Functions should not return different type outputs for different type inputs.  
+
+### 9.4.1 Exercises
+
+1)
+```{r}
+col_means <- function(df) {
+  numeric <- sapply(df, is.numeric)
+  numeric_cols <- df[, numeric]
+  
+  data.frame(lapply(numeric_cols, mean))
+}
+
+col_means(mtcars) # works
+col_means(mtcars[0, ]) # works but produces all NaN b/c no values
+col_means(mtcars[, 0]) # returns named list after sapply (not always the same output)
+col_means(mtcars[, "mpg", drop = F]) # numeric_cols <- df[, numeric], this becomes a vector, add drop = FALSE
+col_means(1:10) # this isn't a dataframe, and it is expecting a df
+col_means(as.matrix(mtcars)) # not a df. maybe try to coerce to dataframe? idk
+col_means(as.list(mtcars)) # not a df. maybe try to coerce to dataframe? idk
+```
+
+```{r}
+
+# new version
+col_means <- function(df) {
+  
+  if (!is.data.frame(df)) stop('not a data frame')
+  if (nrow(df) == 0 | ncol(df) == 0) warning("df has zero rows or zero cols")
+  
+  numeric <- map_lgl(df, is.numeric)
+  numeric_cols <- df[, numeric, drop = FALSE]
+  data.frame(lapply(numeric_cols, mean))
+}
+
+col_means(mtcars) # fine
+col_means(mtcars[, 0]) # returns message (df with zero cols)
+col_means(mtcars[0, ]) # runs but throws warning 
+col_means(mtcars[, "mpg", drop = F]) # works now b/c drop = FALSE added
+col_means(1:10) # stop, not a dataframe
+col_means(as.matrix(mtcars)) # stop, not a dataframe
+col_means(as.list(mtcars)) # stop, not a dataframe
+
+
+```
+
+2)
+
+```{r}
+lag <- function(x, n = 1L) {
+  xlen <- length(x)
+  c(rep(NA, n), x[seq_len(xlen - n)])
+}
+
+lag(1:10)
+lag(1:10, 2)
+lag(1:10, 'a')
+lag(1:10, 12)
+lag(1:10, 0)
+```
+
+
+```{r}
+
+lag <- function(x, n = 1L) {
+  
+  if(!is.atomic(x)) stop("x is not a vector")
+  if(!is.numeric(n) | (n > length(x))) stop('n is not a number or n is not between 0 and length(x)')
+  if(n == 0) {message('n is 0, so it didnt lag')}
+  
+  xlen <- length(x)
+  c(rep(NA, n), x[seq_len(xlen - n)])
+}
+
+lag(1:10)
+lag(1:10, 'string')
+lag(1:10, 11)
+lag(1:10, 0)
+```
+
+
+
+    
