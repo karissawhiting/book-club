@@ -1,0 +1,28 @@
+---
+title: "Chapter 10 Notes"
+author: "M Hannum"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(pryr)
+```
+
+# [Chapter 10: Functional Programming](http://adv-r.had.co.nz/Functional-programming.html)
+
+1. Functional = Take function as an argument 
+
+2. "Anonymous function" which I knew after experience but never thought of as a concept
+
+Exercises
+```{r}
+cv_list <- lapply(mtcars, function(x) sd(x)/mean(x)*100)
+```
+
+

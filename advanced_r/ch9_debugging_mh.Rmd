@@ -1,0 +1,115 @@
+---
+title: "Chapter 8 Notes"
+author: "M Hannum"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(pryr)
+```
+
+# [Chapter 9: Debugging](http://adv-r.had.co.nz/Exceptions-Debugging.html)
+
+Defensive programming principles: 
+
+* Check inputs are correct  
+* Avoid non-standard evaluation  
+* Avoid functions that can return different types of output
+
+**Opening quiz**  
+
+1. How can you find out where an error occurred? 
+
+Look at console results or use traceback.
+
+2. How does `browser()` do? 
+
+??
+
+3. What function do you use to ignore errors in a block of code? 
+
+`tryCatch()`. Can also nest it within functions. 
+
+4. Why might you want to create an error with a custom S3 class? 
+
+??
+
+```{r}
+f <- function(a) g(a)
+g <- function(b) h(b)
+h <- function(c) i(c)
+i <- function(d) "a" + d
+f(10)
+```
+
+Exercises:
+
+What is advantage of withCallingHandlers()?
+```{r}
+condition <- function(subclass, message, call = sys.call(-1), ...) {
+  structure(
+    class = c(subclass, "condition"),
+    list(message = message, call = call),
+    ...
+  )
+}
+is.condition <- function(x) inherits(x, "condition")
+e <- condition(c("my_error", "error"), "This is an error")
+message2error <- function(code) {
+  withCallingHandlers(code, message = function(e) stop(e))
+}
+message2error2 <- function(code) {
+  tryCatch(code, message = function(e) stop(e))
+}
+
+message2error(stop(e))
+traceback()
+message2error2(stop(e))
+traceback()
+```
+Fewer lines in 1st traceback? 
+
+# Defensive programming
+
+1. Strict input: look into `assertthat::stopifnot()`
+
+2. Avoid functions that use non-standard evaluation (e.g. subset, transform, with)
+
+3. Avoid functions that return different types of output depening on input. Specifically: `sapply()` and `[`
+
+## Exercises
+The goal of the col_means() function defined below is to compute the means of all numeric columns in a data frame.
+```{r}
+col_means <- function(df) {
+  numeric <- sapply(df, is.numeric)
+  numeric_cols <- df[, numeric]
+
+  data.frame(lapply(numeric_cols, mean))
+}
+```
+
+
+However, the function is not robust to unusual inputs. Look at the following results, decide which ones are incorrect, and modify col_means() to be more robust. (Hint: there are two function calls in col_means() that are particularly prone to problems.)
+
+```{r}
+col_means(mtcars)
+col_means(mtcars[, 0])
+col_means(mtcars[0, ])
+col_means(mtcars[, "mpg", drop = F])
+col_means(1:10)
+col_means(as.matrix(mtcars))
+col_means(as.list(mtcars))
+mtcars
+mtcars2 <- mtcars
+mtcars2[-1] <- lapply(mtcars2[-1], as.character)
+col_means(mtcars2)
+```
+
+
+
