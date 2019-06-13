@@ -1,0 +1,45 @@
+---
+title: "Chapter 11 Notes"
+author: "M Hannum"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(pryr)
+```
+
+# [Chapter 11: Functionals](https://adv-r.hadley.nz/functionals.html)
+
+*** Actually for this chapter we used the 2nd edition, which is chapter 9 in the second edition, since it uses functions from the purrr package. 
+
+
+## Predicate functionals
+
+I had never seen these! "`some(.x, .p)` returns `TRUE` when it sees the first `TRUE`, and `every()` returns `FALSE` when it sees the first `FALSE`.
+
+`detect_index` also seems super useful (returns location of the first match)
+
+`keep(.x, .p)` keeps all matching elements
+
+9.6.3 Exercises
+1. Why isn't is.na() a predicate function? What base R function is closest to being a predicate version of is.na()? 
+
+```{r}
+x <- c(1, 2, NA)
+
+is.na(x)
+
+anyNA(x)
+```
+
+is.na() is not a predicate function becuase it returns more than 1 TRUE or FALSE. `anyNA` is close to a predicate function because it returns a single value, saying if there are any NA in the vector. 
+
+
+
+
