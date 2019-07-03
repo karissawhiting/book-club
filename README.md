@@ -8,3 +8,4 @@ A collection of notes from going through different statistical and programming t
 First on the docket is [**Advanced R**](http://adv-r.had.co.nz/) by Hadley Wickham.
 "test" 
 Test line
+Another test line
