@@ -10,3 +10,4 @@ First on the docket is [**Advanced R**](http://adv-r.had.co.nz/) by Hadley Wickh
 Test line
 Another test line
 adding one more
+adding a line again
