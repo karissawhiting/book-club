@@ -40,6 +40,6 @@ anyNA(x)
 
 is.na() is not a predicate function becuase it returns more than 1 TRUE or FALSE. `anyNA` is close to a predicate function because it returns a single value, saying if there are any NA in the vector. 
 
-
+Test change 
 
 
