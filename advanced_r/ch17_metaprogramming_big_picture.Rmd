@@ -1,0 +1,180 @@
+---
+title: "Section IV Metaprogramming"
+author: "M Hannum"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(rlang)
+library(lobstr)
+```
+
+# [Section IV Metaprogramming Chapter 17: Big Picture](https://adv-r.hadley.nz/metaprogramming.html)
+
+*Metaprogramming* ... "code is data" so you can do cool things with it. "hardest topic in this book"
+
+*Non-standard evaluation* ... 
+
+## Code is data
+
+```{r}
+expr(10 + 100)
+
+enexpr(x)
+```
+
+
+vs `enexpr()`
+
+
+"Captured expressions behave like lists" - 
+I've been using this without really knowing what I'm doing! Trial and error using `[[` and `$`.
+
+## Code is a tree
+
+*Abstract syntax tree* i.e. AST
+
+```{r}
+lobstr::ast(f1(f2(a, b), f3(1, f4(2))))
+#> █─f1 
+#> ├─█─f2 
+#> │ ├─a 
+#> │ └─b 
+#> └─█─f3 
+#>   ├─1 
+#>   └─█─f4 
+#>     └─2
+```
+
+## Code can generate code
+
+Using `rlang::call2() to create new trees from components. Function, then arguments. 
+
+(** Similar to `do.call`)? Except it doesn't evaluate?
+
+```{r}
+?do.call
+
+?call2
+```
+
+```{r}
+call2("f", 1, 2, 3)
+#> f(1, 2, 3)
+call2("+", 1, call2("*", 2, 3))
+#> 1 + 2 * 3
+
+
+do.call("+", args = list(1, 2))
+
+call2("+", 1, call2("*", 2, 3))
+
+call2("@~~@", x, y)
+
+
+`+`(1, `*`(2, 3))
+```
+
+```{r}
+xx <- expr(x + x)
+yy <- expr(y + y)
+
+xx
+
+expr(!!xx / !!yy)
+expr(xx / yy)
+
+expr(!!enexpr(xx)/!!enexpr(yy))
+#> (x + x)/(y + y)
+
+tt <-
+```
+
+
+"Avoiding paste() when generateing R code" - thoughts?
+
+## Evaluation runs code
+
+```{r}
+eval(call2("+", 1, 2))
+
+# set environment within eval
+eval(expr(x + y), env(x = 1, y = 2))
+
+# or set the environment outside the eval and eval looks for it
+x <- 10
+y <- 100
+eval(expr(x + y))
+```
+
+-- What is a "data mask"
+
+## Customizing evaluation with functions
+Can do things like set the caller environment i.e. bind names to functions.
+
+## Customising evaluation with data
+*** Looking for variables in a data frame instead of an environment
+
+```{r}
+df <- data.frame(x = 1:5, y = sample(5))
+
+eval_tidy(expr(x + y), df)
+
+with2 <- function(df, expr) {
+  a <- 1000
+  eval_tidy(enexpr(expr), df)
+}
+
+a <- 10
+with2(df, x + a)
+
+with3 <- function(df, expr) {
+  a <- 1000
+  eval_tidy(enquo(expr), df)
+}
+
+a <- 20
+with3(df, x + a)
+rm(list = "a")
+```
+
+## Quosures
+
+**Quosure** bundles an expression with an environment.
+
+Means you should use `enquo()` instead of `enexpr()` when you use a data mask. 
+
+# Ch 18 Expressions
+
+## Introduction
+
+`expr()` returns an expression, which is an object that captures the structure of the code without evaluating it.
+
+## Abstract syntax trees
+
+```{r}
+lobstr::ast(f(x, "y", 1))
+#> █─f 
+#> ├─x 
+#> ├─"y" 
+#> └─1
+```
+
+ASTs describe evaluation order, nesting of function calls
+
+### Non-code components
+ Don't capture whitespace/comments except to distinguish `<-` and `<` `-`
+
+
+
+
+
+
+
+
