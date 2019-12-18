@@ -169,7 +169,74 @@ lobstr::ast(f(x, "y", 1))
 ASTs describe evaluation order, nesting of function calls
 
 ### Non-code components
- Don't capture whitespace/comments except to distinguish `<-` and `<` `-`
+ASTs don't capture whitespace/comments except to distinguish `<-` and `<` `-`
+
+### Infix calls
+
+"Infix" notation is where operators are "infixed" between operands (e.g. y <- a + b). 
+
+### Exercises
+
+1. Reconstruct code represented by trees
+```{r}
+lobstr::ast(f(g(h())))
+
+lobstr::ast(1+2+3)
+
+lobstr::ast((x+y)*z)
+```
+
+2. Draw trees by hand and check answers with `lobstr::ast()`
+
+```{r}
+lobstr::ast(f(g(h(i(1, 2, 3)))))
+lobstr::ast(f(1, g(2, h(3, i()))))
+lobstr::ast(f(g(1, 2), h(3, i(4, 5))))
+```
+
+3. What's happening with the ASTs below?
+
+    1. variable x added to variable y
+
+```{r}
+lobstr::ast(`x` + `y`)
+#> █─`+` 
+#> ├─x 
+#> └─y
+lobstr::ast(x + y)
+```
+
+    2. Variable x raised to power of y. Per documentation, "** is translated in the parser to ^, but this was undocumented for many years."
+    
+```{r}
+
+lobstr::ast(x ** y)
+#> █─`^` 
+#> ├─x 
+#> └─y
+```
+
+    3. Parser prefers '<-' over '->'
+```{r}
+lobstr::ast(1 -> x)
+#> █─`<-` 
+#> ├─x 
+#> └─1
+```
+
+4. What is special about the AST below?
+
+`srcref` is short for source reference. It's not specified in the expression within the ast 
+```{r}
+lobstr::ast(function(x = 1, y = 2) {})
+#> █─`function` 
+#> ├─█─x = 1 
+#> │ └─y = 2 
+#> ├─█─`{` 
+#> └─<inline srcref>
+```
+
+
 
 
 
