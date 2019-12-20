@@ -152,6 +152,7 @@ Means you should use `enquo()` instead of `enexpr()` when you use a data mask.
 
 # Ch 18 Expressions
 
+
 ## Introduction
 
 `expr()` returns an expression, which is an object that captures the structure of the code without evaluating it.
@@ -234,6 +235,8 @@ lobstr::ast(function(x = 1, y = 2) {})
 #> │ └─y = 2 
 #> ├─█─`{` 
 #> └─<inline srcref>
+
+
 ```
 
 
@@ -295,11 +298,19 @@ x[[2]]
 
 x[[3]]
 
-x[-1]
+is.expression(x[-1])
+is.expression(x)
+class(x)
 
 x[1]
 
 x[2]
+
+as.list(x)
+
+lobstr::ast(!!x)
+
+x$sep <- ""
 ```
 
 *** I love that calls can be modified like lists
@@ -335,7 +346,10 @@ Only 4 allowed are: int, num, chr, lgl.
 ```{r}
 y <- expr(read.csv("foo.csv", header = TRUE))[-1]
 
-is.expression(y)
+is_call(y)
+is_expression(y)
+
+y$sep <- ""
 ```
 
 Object is no longer an expression with out the function call. The first element is now the 2nd element of the original. 
@@ -374,6 +388,9 @@ call_standardise(quote(mean(n = T, 1:10)))
 call_standardise(quote(mean(x = 1:10, , TRUE)))
 #> mean(x = 1:10, , TRUE)
 
+call_standardise(quote(mean.default(x = 1:10, , TRUE)))
+
+
 ```
 
 Try to use `mean.default()` instead. 
@@ -409,6 +426,7 @@ call2("ifelse", expr(x > 1), "a", "b")
 call2("if", call2(">", sym("x"), 1), "a", "b")
 
 # check with eval
+x = 10
 eval(call2("if", call2(">", sym("x"), 1), "a", "b"))
 
 x = 0
@@ -481,6 +499,7 @@ I don't know exactly why the second version only calls one `(` function, see my 
 ```{r}
 ast(f((1)))
 
+
 ast(`(`(1 + 1))
 #equivalent to this for some reason??
 ast((1 + 1))
@@ -539,6 +558,10 @@ Had to look up other reason: that `<-` "invisibly returns the value on the right
 
 ```{r}
 ast(x + y %+% z)
+
+!%in%
+  
+  !(  %in% )
 
 ?`%+%`
 
