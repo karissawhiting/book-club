@@ -1,0 +1,587 @@
+---
+title: "Section IV Metaprogramming"
+author: "M Hannum"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(rlang)
+library(lobstr)
+```
+
+# [Section IV Metaprogramming Chapter 17: Big Picture](https://adv-r.hadley.nz/metaprogramming.html)
+
+*Metaprogramming* ... "code is data" so you can do cool things with it. "hardest topic in this book"
+
+*Non-standard evaluation* ... 
+
+## Code is data
+
+```{r}
+expr(10 + 100)
+
+enexpr(x)
+```
+
+
+vs `enexpr()`
+
+
+"Captured expressions behave like lists" - 
+I've been using this without really knowing what I'm doing! Trial and error using `[[` and `$`.
+
+## Code is a tree
+
+*Abstract syntax tree* i.e. AST
+
+```{r}
+lobstr::ast(f1(f2(a, b), f3(1, f4(2))))
+#> █─f1 
+#> ├─█─f2 
+#> │ ├─a 
+#> │ └─b 
+#> └─█─f3 
+#>   ├─1 
+#>   └─█─f4 
+#>     └─2
+```
+
+## Code can generate code
+
+Using `rlang::call2() to create new trees from components. Function, then arguments. 
+
+(** Similar to `do.call`)? Except it doesn't evaluate?
+
+```{r}
+?do.call
+
+?call2
+```
+
+```{r}
+call2("f", 1, 2, 3)
+#> f(1, 2, 3)
+call2("+", 1, call2("*", 2, 3))
+#> 1 + 2 * 3
+
+
+do.call("+", args = list(1, 2))
+
+call2("+", 1, call2("*", 2, 3))
+
+call2("@~~@", x, y)
+
+
+`+`(1, `*`(2, 3))
+```
+
+```{r}
+xx <- expr(x + x)
+yy <- expr(y + y)
+
+xx
+
+expr(!!xx / !!yy)
+expr(xx / yy)
+
+expr(!!enexpr(xx)/!!enexpr(yy))
+#> (x + x)/(y + y)
+
+tt <-
+```
+
+
+"Avoiding paste() when generateing R code" - thoughts?
+
+## Evaluation runs code
+
+```{r}
+eval(call2("+", 1, 2))
+
+# set environment within eval
+eval(expr(x + y), env(x = 1, y = 2))
+
+# or set the environment outside the eval and eval looks for it
+x <- 10
+y <- 100
+eval(expr(x + y))
+```
+
+-- What is a "data mask"
+
+## Customizing evaluation with functions
+Can do things like set the caller environment i.e. bind names to functions.
+
+## Customising evaluation with data
+*** Looking for variables in a data frame instead of an environment
+
+```{r}
+df <- data.frame(x = 1:5, y = sample(5))
+
+eval_tidy(expr(x + y), df)
+
+with2 <- function(df, expr) {
+  a <- 1000
+  eval_tidy(enexpr(expr), df)
+}
+
+a <- 10
+with2(df, x + a)
+
+with3 <- function(df, expr) {
+  a <- 1000
+  eval_tidy(enquo(expr), df)
+}
+
+a <- 20
+with3(df, x + a)
+rm(list = "a")
+```
+
+## Quosures
+
+**Quosure** bundles an expression with an environment.
+
+Means you should use `enquo()` instead of `enexpr()` when you use a data mask. 
+
+# Ch 18 Expressions
+
+
+## Introduction
+
+`expr()` returns an expression, which is an object that captures the structure of the code without evaluating it.
+
+## Abstract syntax trees
+
+```{r}
+lobstr::ast(f(x, "y", 1))
+#> █─f 
+#> ├─x 
+#> ├─"y" 
+#> └─1
+```
+
+ASTs describe evaluation order, nesting of function calls
+
+### Non-code components
+ASTs don't capture whitespace/comments except to distinguish `<-` and `<` `-`
+
+### Infix calls
+
+"Infix" notation is where operators are "infixed" between operands (e.g. y <- a + b). 
+
+### Exercises
+
+1. Reconstruct code represented by trees
+```{r}
+lobstr::ast(f(g(h())))
+
+lobstr::ast(1+2+3)
+
+lobstr::ast((x+y)*z)
+```
+
+2. Draw trees by hand and check answers with `lobstr::ast()`
+
+```{r}
+lobstr::ast(f(g(h(i(1, 2, 3)))))
+lobstr::ast(f(1, g(2, h(3, i()))))
+lobstr::ast(f(g(1, 2), h(3, i(4, 5))))
+```
+
+3. What's happening with the ASTs below?
+
+    1. variable x added to variable y
+
+```{r}
+lobstr::ast(`x` + `y`)
+#> █─`+` 
+#> ├─x 
+#> └─y
+lobstr::ast(x + y)
+```
+
+    2. Variable x raised to power of y. Per documentation, "** is translated in the parser to ^, but this was undocumented for many years."
+    
+```{r}
+
+lobstr::ast(x ** y)
+#> █─`^` 
+#> ├─x 
+#> └─y
+```
+
+    3. Parser prefers '<-' over '->'
+```{r}
+lobstr::ast(1 -> x)
+#> █─`<-` 
+#> ├─x 
+#> └─1
+```
+
+4. What is special about the AST below?
+
+`srcref` is short for source reference. It's not specified in the expression within the ast 
+```{r}
+lobstr::ast(function(x = 1, y = 2) {})
+#> █─`function` 
+#> ├─█─x = 1 
+#> │ └─y = 2 
+#> ├─█─`{` 
+#> └─<inline srcref>
+
+
+```
+
+
+## Expressions
+
+*Expression* = "any member of the set of base types created by parsing code: constant scalars, symbols, call objects, and pairlists. 
+
+### Constants
+
+Constant is either NULL or length-1 atomic vector
+```{r}
+identical(expr(TRUE), TRUE)
+#> [1] TRUE
+identical(expr(1), 1)
+#> [1] TRUE
+identical(expr(2L), 2L)
+#> [1] TRUE
+identical(expr("x"), "x")
+#> [1] TRUE
+```
+
+### Symbols
+
+Symbol represents the name of an object
+
+***`rlang::sym()` seems it could be useful?
+
+```{r}
+sym("x")
+
+syms(c("x", "y"))
+```
+
+Can go back with `as.character()` or `rlang::as_string()`. 
+
+### Calls
+
+Call object is a special type of list - where first element is function call. 
+
+```{r}
+lobstr::ast(read.table("important.csv", row.names = FALSE))
+#> █─read.table 
+#> ├─"important.csv" 
+#> └─row.names = FALSE
+x <- expr(read.table("important.csv", row.names = FALSE))
+```
+
+
+#### Subsetting
+Can use standard subsetting on calls because they behave like lists! 
+
+
+* can we talk about the differences between the below? 
+
+```{r}
+x[[1]]
+
+x[[2]]
+
+x[[3]]
+
+is.expression(x[-1])
+is.expression(x)
+class(x)
+
+x[1]
+
+x[2]
+
+as.list(x)
+
+lobstr::ast(!!x)
+
+x$sep <- ""
+```
+
+*** I love that calls can be modified like lists
+
+
+
+#### Function position
+
+Possible that first element of call object (i.e. "function position") isn't a symbol, might have to be retrieved. 
+
+#### Constructing
+
+Simple expressions can be constructed using `rlang::call2()`. 
+
+```{r}
+# first argument name of 
+call2("mean", x = expr(x), na.rm = TRUE)
+#> mean(x = x, na.rm = TRUE)
+call2(expr(base::mean), x = expr(x), na.rm = TRUE)
+#> base::mean(x = x, na.rm = TRUE)
+```
+
+
+### Exercises
+
+1. Which two of the six types of atomic vector can't appear in an expression? 
+
+A: Have to be atomic of length 1. e.g. can't be complex atomics or raws. 
+Only 4 allowed are: int, num, chr, lgl.
+
+2. What happens when you subset a call object to remove the first element? 
+
+```{r}
+y <- expr(read.csv("foo.csv", header = TRUE))[-1]
+
+is_call(y)
+is_expression(y)
+
+y$sep <- ""
+```
+
+Object is no longer an expression with out the function call. The first element is now the 2nd element of the original. 
+
+3. Describe the differences: 
+
+```{r}
+x <- 1:10
+
+call2(median, x, na.rm = TRUE)
+eval(call2(median, x, na.rm = TRUE))
+
+call2(expr(median), x, na.rm = TRUE)
+eval(call2(expr(median), x, na.rm = TRUE))
+
+call2(median, expr(x), na.rm = TRUE)
+eval(call2(median, expr(x), na.rm = TRUE))
+
+
+call2(expr(median), expr(x), na.rm = TRUE)
+eval(call2(expr(median), expr(x), na.rm = TRUE))
+```
+
+All are evaluated to the same response, but differ on when `x` and `median()` are evaluated. 
+
+4. `rlang::call_standardise()` doesn't work so well for `mean()` since `mean()` uses the `...` argument which is difficult to standardize. 
+
+
+```{r}
+library(rlang)
+
+call_standardise(quote(mean(1:10, na.rm = TRUE)))
+#> mean(x = 1:10, na.rm = TRUE)
+call_standardise(quote(mean(n = T, 1:10)))
+#> mean(x = 1:10, n = T)
+call_standardise(quote(mean(x = 1:10, , TRUE)))
+#> mean(x = 1:10, , TRUE)
+
+call_standardise(quote(mean.default(x = 1:10, , TRUE)))
+
+
+```
+
+Try to use `mean.default()` instead. 
+
+5. Why doesn't this code make sense? 
+
+```{r}
+x <- expr(foo(x = 1))
+names(x) <- c("x", "")
+
+
+x
+
+names(x) <- c("", "x")
+
+x
+```
+
+Doesn't make sense to name a function call?
+
+6. Construct the expression `if(x > 1) "a" else "b"` using multiple `call2()`. 
+
+```{r}
+x = 10
+# first attempt
+call2("ifelse", expr(x > 1), "a", "b")
+
+
+# second attempt
+#call2("if", call2(">", x, 1), "a", "b")
+
+# finally
+call2("if", call2(">", sym("x"), 1), "a", "b")
+
+# check with eval
+x = 10
+eval(call2("if", call2(">", sym("x"), 1), "a", "b"))
+
+x = 0
+eval(call2("if", call2(">", sym("x"), 1), "a", "b"))
+```
+
+## Parsing and grammar
+
+"Parsing" = "process by which a computer language takes a string and constructs an expression" by rules of that languages "grammar".
+
+### Operator precedence
+
+Just like in school maths :) 
+
+EXCEPT the `!` has low precedence!
+
+```{r}
+# use this to see operator description and precedence
+?Syntax
+```
+
+* Note parenthesis as a call in AST
+
+```{r}
+lobstr::ast((1 + 2) * 3)
+#> █─`*` 
+#> ├─█─`(` 
+#> │ └─█─`+` 
+#> │   ├─1 
+#> │   └─2 
+#> └─3
+```
+
+### Associativity
+
+Most operators are left associative except for exponentiation and assignment. 
+
+### Parsing and deparsing
+What to do when you have code stored in a string... and want to parse it yourself! 
+
+```{r}
+x1 <- "y <- x + 10"
+x1
+#> [1] "y <- x + 10"
+is.call(x1)
+#> [1] FALSE
+
+x2 <- rlang::parse_expr(x1)
+x2
+#> y <- x + 10
+is.call(x2)
+#> [1] TRUE
+```
+
+* Use `rlang::parse_exprs()` for a list of expressions. 
+
+### Exercises
+1. R uses parentheses in two slightly different ways: compare and contrast
+
+```{r}
+f((1))
+`(`(1 + 1)
+```
+
+Parenthesis can be part of a function or just part of syntax.. 
+
+When used in `f()` the parenthesis is part of syntax, while the inner one around 1 (`(1)`) is a function. 
+
+I don't know exactly why the second version only calls one `(` function, see my second example. 
+```{r}
+ast(f((1)))
+
+
+ast(`(`(1 + 1))
+#equivalent to this for some reason??
+ast((1 + 1))
+
+# and here we have 2 `(` functions in the AST tree
+ast(((1 + 1)))
+```
+
+2. `=` can be used 2 ways. show an example. 
+
+```{r}
+# assignment and as part of syntax of function calls
+
+df = data.frame(x = 2)
+
+```
+
+3. Does `-2^2` yield 4 or -4?
+
+Yields -4 because of syntax precedence. `^` takes precedence over `-`
+```{r}
+-2^2
+
+?Syntax
+```
+
+4. Why does `!1 + !1` return what it does? 
+
+```{r}
+!1 + !1
+
+ast(!1 + !1)
+
+!1
+
+1 + !1
+```
+
+Unexpected (maybe) evaluation
+
+5. Why does `x1 <- x2 <- x3 <- 0 ` work? Describe two reasons
+
+```{r}
+x1 <- x2 <- x3 <- 0 
+```
+
+Assignment goes right to left (as does `^`). 
+
+Had to look up other reason: that `<-` "invisibly returns the value on the right hand side". 
+
+```{r}
+(x3 <- 0)
+```
+
+6. Compare ASTs of x + y %+% z and x ^ y %+% z. 
+
+```{r}
+ast(x + y %+% z)
+
+!%in%
+  
+  !(  %in% )
+
+?`%+%`
+
+ast(x ^ y %+% z)
+```
+
+Custom infix `%+%` seems to have precedence over `+` but not over `^`. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

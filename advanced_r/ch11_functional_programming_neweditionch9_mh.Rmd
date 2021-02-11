@@ -1,0 +1,80 @@
+---
+title: "Section IV Metaprogramming"
+author: "M Hannum"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(rlang)
+library(lobstr)
+```
+
+# [Section IV Metaprogramming Chapter 17: Big Picture](https://adv-r.hadley.nz/metaprogramming.html)
+
+*Metaprogramming* ... "code is data" so you can do cool things with it. "hardest topic in this book"
+
+*Non-standard evaluation* ... 
+
+## Code is data
+
+```{r}
+expr(10 + 100)
+
+```
+
+
+vs `enexpr()`
+
+
+"Captured expressions behave like lists" - 
+I've been using this without really knowing what I'm doing! Trial and error using `[[` and `$`.
+
+## Code is a tree
+
+*Abstract syntax tree* i.e. AST
+
+```{r}
+lobstr::ast(f1(f2(a, b), f3(1, f4(2))))
+#> █─f1 
+#> ├─█─f2 
+#> │ ├─a 
+#> │ └─b 
+#> └─█─f3 
+#>   ├─1 
+#>   └─█─f4 
+#>     └─2
+```
+
+## Code can generate code
+
+Using `rlang::call2() to create new trees from components. Function, then arguments. 
+
+(** Similar to `do.call`)? Except it doesn't evaluate?
+
+```{r}
+?do.call
+
+?call2
+```
+
+```{r}
+call2("f", 1, 2, 3)
+#> f(1, 2, 3)
+call2("+", 1, call2("*", 2, 3))
+#> 1 + 2 * 3
+
+call2("+", 1, 2)
+do.call("+", args = list(1, 2))
+
+```
+
+
+
+
+
